@@ -5,6 +5,10 @@ plugins {
     alias(libs.plugins.navigation.safeargs)
 }
 
+def keyPropertiesFile = rootProject.file("keystore.properties")
+def keyProperties = new Properties()
+keyProperties.load(new FileInputStream(keyPropertiesFile))
+
 android {
     namespace 'ru.vsu.zmaev.a4rotor'
     compileSdk 34
@@ -18,9 +22,8 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        Properties properties = new Properties()
-        properties.load(project.rootProject.file("local.properties").newDataInputStream())
-        buildConfigField "String", "API_KEY", "\"${properties.getProperty("API_KEY")}\""
+        buildConfigField "String", "API_KEY", keyProperties['API_KEY']
+
     }
 
     buildTypes {

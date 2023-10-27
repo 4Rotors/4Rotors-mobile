@@ -23,7 +23,6 @@ object MainApi {
                 mRetrofit = Retrofit.Builder()
                     .baseUrl(URL)
                     .client(mOkHttpClient)
-                    .addConverterFactory(GsonConverterFactory.create())
                     .build()
             }
             return mRetrofit
