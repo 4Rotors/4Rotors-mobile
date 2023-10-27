@@ -2,14 +2,15 @@ package ru.vsu.zmaev.a4rotor.ui.map
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.PointF
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import com.yandex.mapkit.Animation
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraListener
@@ -17,13 +18,12 @@ import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.CameraUpdateReason
 import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.map.MapObjectCollection
-import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.map.PlacemarkMapObject
+import com.yandex.mapkit.user_location.UserLocationLayer
 import com.yandex.runtime.image.ImageProvider
 import ru.vsu.zmaev.a4rotor.BuildConfig
 import ru.vsu.zmaev.a4rotor.R
 import ru.vsu.zmaev.a4rotor.data.model.point.PointData
-import ru.vsu.zmaev.a4rotor.data.network.MainApi
 import ru.vsu.zmaev.a4rotor.data.network.PointApi
 import ru.vsu.zmaev.a4rotor.data.network.PointRequestBody
 import ru.vsu.zmaev.a4rotor.data.repository.MainRepositoryImpl
@@ -39,20 +39,24 @@ class MapFragment : Fragment(), CameraListener {
 
     private lateinit var viewModel: MapViewModel
 
-    private lateinit var mapObjectCollection: MapObjectCollection
+    private lateinit var userLocationLayer: UserLocationLayer
+
+    private var routeStartLocation = Point(0.0, 0.0)
+
+    private var followUserLocation = false
+
     private lateinit var placemarkMapObject: PlacemarkMapObject
+    private lateinit var mapObjectCollection: MapObjectCollection
 
-    private val mapObjectTapListener = MapObjectTapListener { mapObject, point ->
-        true
+    override fun onCreate(savedInstanceState: Bundle?) {
+        setApiKey(savedInstanceState)
+        super.onCreate(savedInstanceState)
     }
-
-    private var zoomValue: Float = 16.5f
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        setApiKey(savedInstanceState)
         val api = PointApi.getPointApi()!!
         val repository = MainRepositoryImpl(api)
         val interactor = MapInteractorImpl(repository)
@@ -66,22 +70,48 @@ class MapFragment : Fragment(), CameraListener {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val mapKit = MapKitFactory.getInstance()
+        userLocationLayer = mapKit.createUserLocationLayer(binding.mapView.mapWindow)
         binding.trackButton.setOnClickListener {
-            viewModel.getPoint(PointRequestBody(binding.trackNumberEt.text.toString()))
+//            viewModel.getPoint(PointRequestBody(binding.trackNumberEt.text.toString()))
+            cameraDronePosition(PointData(51.656874, 39.205964))
         }
         viewModel.point.observe(viewLifecycleOwner) {
-            setMarkerToLocation(it);
+            cameraDronePosition(it)
         }
     }
 
-    private fun setMarkerToLocation(point: PointData) {
-        val marker = createBitmapFromVector(R.drawable.ic_drone)
-        mapObjectCollection = binding.mapview.map.mapObjects
-        placemarkMapObject =
-            mapObjectCollection.addPlacemark(Point(point.locationX, point.locationY), ImageProvider.fromBitmap(marker))
-        placemarkMapObject.opacity = 0.5f
-        placemarkMapObject.addTapListener(mapObjectTapListener)
+    override fun onStop() {
+        binding.mapView.onStop()
+        MapKitFactory.getInstance().onStop()
+        super.onStop()
     }
+
+    override fun onStart() {
+        super.onStart()
+        MapKitFactory.getInstance().onStart()
+        binding.mapView.onStart()
+    }
+
+    private fun cameraDronePosition(point: PointData) {
+        val marker = createBitmapFromVector(R.drawable.ic_drone)
+        routeStartLocation = Point(point.locationX, point.locationY)
+        mapObjectCollection = binding.mapView.map.mapObjects
+        placemarkMapObject = mapObjectCollection.addPlacemark(Point(point.locationX, point.locationY), ImageProvider.fromBitmap(marker))
+        binding.mapView.map.move(
+            CameraPosition(routeStartLocation, 16f, 0f, 0f), Animation(Animation.Type.SMOOTH, 1f), null
+        )
+    }
+
+//    private fun setMarkerToLocation(point: PointData) {
+//        val marker = createBitmapFromVector(R.drawable.ic_drone)
+//        mapObjectCollection = binding.mapview.map.mapObjects
+//        placemarkMapObject =
+//            mapObjectCollection.addPlacemark(Point(point.locationX, point.locationY), ImageProvider.fromBitmap(marker))
+//        placemarkMapObject.opacity = 0.5f
+//        placemarkMapObject.addTapListener(mapObjectTapListener)
+//    }
+
     private fun setApiKey(savedInstanceState: Bundle?) {
         val haveApiKey = savedInstanceState?.getBoolean("haveApiKey") ?: false
         if (!haveApiKey) {
@@ -95,22 +125,34 @@ class MapFragment : Fragment(), CameraListener {
     }
 
     override fun onCameraPositionChanged(
-        map: Map,
-        cameraPosition: CameraPosition,
-        cameraUpdateReason: CameraUpdateReason,
-        finished: Boolean
+        map: Map, cPos: CameraPosition, cUpd: CameraUpdateReason, finish: Boolean
     ) {
-        if (finished) {
-            when {
-                cameraPosition.zoom >= ZOOM_BOUNDARY && zoomValue <= ZOOM_BOUNDARY -> {
-                    placemarkMapObject.setIcon(ImageProvider.fromBitmap(createBitmapFromVector(R.drawable.ic_pin_blue_svg)))
-                }
-                cameraPosition.zoom <= ZOOM_BOUNDARY && zoomValue >= ZOOM_BOUNDARY -> {
-                    placemarkMapObject.setIcon(ImageProvider.fromBitmap(createBitmapFromVector(R.drawable.ic_pin_red_svg)))
-                }
+        if (finish) {
+            if (followUserLocation) {
+                setAnchor()
             }
-            zoomValue = cameraPosition.zoom
+        } else {
+            if (!followUserLocation) {
+                noAnchor()
+            }
         }
+    }
+
+    private fun noAnchor() {
+        userLocationLayer.resetAnchor()
+
+    }
+
+    private fun setAnchor() {
+        userLocationLayer.setAnchor(
+            PointF(
+                (binding.mapView.width * 0.5).toFloat(), (binding.mapView.height * 0.5).toFloat()
+            ),
+            PointF(
+                (binding.mapView.width * 0.5).toFloat(), (binding.mapView.height * 0.83).toFloat()
+            )
+        )
+        followUserLocation = false
     }
 
     private fun createBitmapFromVector(art: Int): Bitmap? {
