@@ -1,9 +1,9 @@
-package ru.vsu.zmaev.a4rotor.data.repository
+package ru.vsu.zmaev.a4rotor.repository
 
 import retrofit2.Response
-import ru.vsu.zmaev.a4rotor.data.model.point.PointData
-import ru.vsu.zmaev.a4rotor.data.network.PointApi
-import ru.vsu.zmaev.a4rotor.data.network.PointRequestBody
+import ru.vsu.zmaev.a4rotor.model.PointData
+import ru.vsu.zmaev.a4rotor.network.PointApi
+import ru.vsu.zmaev.a4rotor.model.PointRequestBody
 
 class MainRepositoryImpl(
     private val pointApi: PointApi

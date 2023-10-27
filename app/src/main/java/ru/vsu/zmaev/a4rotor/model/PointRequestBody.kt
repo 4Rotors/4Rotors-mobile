@@ -1,4 +1,4 @@
-package ru.vsu.zmaev.a4rotor.data.network
+package ru.vsu.zmaev.a4rotor.model
 
 data class PointRequestBody(
     val trackNumber: String
