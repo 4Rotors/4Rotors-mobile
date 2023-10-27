@@ -1,4 +1,4 @@
-package ru.vsu.zmaev.a4rotor.ui
+package ru.vsu.zmaev.a4rotor.ui.map
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraListener
@@ -22,8 +23,13 @@ import com.yandex.runtime.image.ImageProvider
 import ru.vsu.zmaev.a4rotor.BuildConfig
 import ru.vsu.zmaev.a4rotor.R
 import ru.vsu.zmaev.a4rotor.data.model.point.PointData
+import ru.vsu.zmaev.a4rotor.data.network.MainApi
+import ru.vsu.zmaev.a4rotor.data.network.PointApi
 import ru.vsu.zmaev.a4rotor.data.network.PointRequestBody
+import ru.vsu.zmaev.a4rotor.data.repository.MainRepositoryImpl
 import ru.vsu.zmaev.a4rotor.databinding.FragmentMapBinding
+import ru.vsu.zmaev.a4rotor.factory.CustomViewModelFactory
+import ru.vsu.zmaev.a4rotor.ui.map.interactor.MapInteractorImpl
 import ru.vsu.zmaev.a4rotor.ui.map.viewmodel.MapViewModel
 
 class MapFragment : Fragment(), CameraListener {
@@ -31,9 +37,9 @@ class MapFragment : Fragment(), CameraListener {
     private var _binding: FragmentMapBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel by viewModels<MapViewModel>()
+    private lateinit var viewModel: MapViewModel
 
-    private lateinit var mapObjectCollection: MapObjectCollection // Коллекция различных объектов на карте
+    private lateinit var mapObjectCollection: MapObjectCollection
     private lateinit var placemarkMapObject: PlacemarkMapObject
 
     private val mapObjectTapListener = MapObjectTapListener { mapObject, point ->
@@ -47,8 +53,15 @@ class MapFragment : Fragment(), CameraListener {
         savedInstanceState: Bundle?
     ): View {
         setApiKey(savedInstanceState)
+        val api = PointApi.getPointApi()!!
+        val repository = MainRepositoryImpl(api)
+        val interactor = MapInteractorImpl(repository)
         _binding = FragmentMapBinding.inflate(inflater, container, false)
-        return binding.root;
+        viewModel = ViewModelProvider(
+            this,
+            CustomViewModelFactory(interactor),
+        )[MapViewModel::class.java]
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -60,7 +73,6 @@ class MapFragment : Fragment(), CameraListener {
             setMarkerToLocation(it);
         }
     }
-
 
     private fun setMarkerToLocation(point: PointData) {
         val marker = createBitmapFromVector(R.drawable.ic_drone)
