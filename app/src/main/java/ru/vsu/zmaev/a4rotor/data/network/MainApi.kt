@@ -15,7 +15,7 @@ object MainApi {
 
     private var mRetrofit: Retrofit? = null
 
-    const val URL = ""
+    const val URL = "http://localhost:8080"
 
     val client: Retrofit?
         get() {
