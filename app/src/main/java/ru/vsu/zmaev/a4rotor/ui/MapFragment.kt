@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.viewModels
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraListener
@@ -21,12 +22,16 @@ import com.yandex.runtime.image.ImageProvider
 import ru.vsu.zmaev.a4rotor.BuildConfig
 import ru.vsu.zmaev.a4rotor.R
 import ru.vsu.zmaev.a4rotor.data.model.point.PointData
+import ru.vsu.zmaev.a4rotor.data.network.PointRequestBody
 import ru.vsu.zmaev.a4rotor.databinding.FragmentMapBinding
+import ru.vsu.zmaev.a4rotor.ui.map.viewmodel.MapViewModel
 
 class MapFragment : Fragment(), CameraListener {
 
     private var _binding: FragmentMapBinding? = null
     private val binding get() = _binding!!
+
+    private val viewModel by viewModels<MapViewModel>()
 
     private lateinit var mapObjectCollection: MapObjectCollection // Коллекция различных объектов на карте
     private lateinit var placemarkMapObject: PlacemarkMapObject
@@ -45,6 +50,17 @@ class MapFragment : Fragment(), CameraListener {
         _binding = FragmentMapBinding.inflate(inflater, container, false)
         return binding.root;
     }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        binding.trackButton.setOnClickListener {
+            viewModel.getPoint(PointRequestBody(binding.trackNumberEt.text.toString()))
+        }
+        viewModel.point.observe(viewLifecycleOwner) {
+            setMarkerToLocation(it);
+        }
+    }
+
 
     private fun setMarkerToLocation(point: PointData) {
         val marker = createBitmapFromVector(R.drawable.ic_drone)
