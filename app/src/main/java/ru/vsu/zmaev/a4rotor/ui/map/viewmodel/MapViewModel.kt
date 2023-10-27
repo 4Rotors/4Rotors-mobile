@@ -8,7 +8,7 @@ import ru.vsu.zmaev.a4rotor.data.model.point.PointData
 import ru.vsu.zmaev.a4rotor.data.network.PointRequestBody
 import ru.vsu.zmaev.a4rotor.ui.map.interactor.MapInteractor
 
-class MapViewModel(
+class MapViewModel constructor(
     private val interator: MapInteractor
 ) : ViewModel() {
 
