@@ -23,13 +23,12 @@ import com.yandex.mapkit.user_location.UserLocationLayer
 import com.yandex.runtime.image.ImageProvider
 import ru.vsu.zmaev.a4rotor.BuildConfig
 import ru.vsu.zmaev.a4rotor.R
-import ru.vsu.zmaev.a4rotor.data.model.point.PointData
-import ru.vsu.zmaev.a4rotor.data.network.PointApi
-import ru.vsu.zmaev.a4rotor.data.network.PointRequestBody
-import ru.vsu.zmaev.a4rotor.data.repository.MainRepositoryImpl
+import ru.vsu.zmaev.a4rotor.model.PointData
+import ru.vsu.zmaev.a4rotor.network.PointApi
+import ru.vsu.zmaev.a4rotor.model.PointRequestBody
+import ru.vsu.zmaev.a4rotor.repository.MainRepositoryImpl
 import ru.vsu.zmaev.a4rotor.databinding.FragmentMapBinding
 import ru.vsu.zmaev.a4rotor.factory.CustomViewModelFactory
-import ru.vsu.zmaev.a4rotor.ui.map.interactor.MapInteractorImpl
 import ru.vsu.zmaev.a4rotor.ui.map.viewmodel.MapViewModel
 
 class MapFragment : Fragment(), CameraListener {
@@ -59,11 +58,10 @@ class MapFragment : Fragment(), CameraListener {
     ): View {
         val api = PointApi.getPointApi()!!
         val repository = MainRepositoryImpl(api)
-        val interactor = MapInteractorImpl(repository)
         _binding = FragmentMapBinding.inflate(inflater, container, false)
         viewModel = ViewModelProvider(
             this,
-            CustomViewModelFactory(interactor),
+            CustomViewModelFactory(repository),
         )[MapViewModel::class.java]
         return binding.root
     }
@@ -72,11 +70,14 @@ class MapFragment : Fragment(), CameraListener {
         super.onViewCreated(view, savedInstanceState)
         val mapKit = MapKitFactory.getInstance()
         userLocationLayer = mapKit.createUserLocationLayer(binding.mapView.mapWindow)
+        mapObjectCollection = binding.mapView.map.mapObjects
+        placemarkMapObject = mapObjectCollection.addEmptyPlacemark(Point())
         binding.trackButton.setOnClickListener {
-//            viewModel.getPoint(PointRequestBody(binding.trackNumberEt.text.toString()))
-            cameraDronePosition(PointData(51.656874, 39.205964))
+            val pointRequestBody = PointRequestBody(binding.trackNumberEt.text.toString())
+            viewModel.getPoint(pointRequestBody)
         }
         viewModel.point.observe(viewLifecycleOwner) {
+            mapObjectCollection.remove(placemarkMapObject)
             cameraDronePosition(it)
         }
     }
@@ -96,21 +97,11 @@ class MapFragment : Fragment(), CameraListener {
     private fun cameraDronePosition(point: PointData) {
         val marker = createBitmapFromVector(R.drawable.ic_drone)
         routeStartLocation = Point(point.locationX, point.locationY)
-        mapObjectCollection = binding.mapView.map.mapObjects
         placemarkMapObject = mapObjectCollection.addPlacemark(Point(point.locationX, point.locationY), ImageProvider.fromBitmap(marker))
         binding.mapView.map.move(
             CameraPosition(routeStartLocation, 16f, 0f, 0f), Animation(Animation.Type.SMOOTH, 1f), null
         )
     }
-
-//    private fun setMarkerToLocation(point: PointData) {
-//        val marker = createBitmapFromVector(R.drawable.ic_drone)
-//        mapObjectCollection = binding.mapview.map.mapObjects
-//        placemarkMapObject =
-//            mapObjectCollection.addPlacemark(Point(point.locationX, point.locationY), ImageProvider.fromBitmap(marker))
-//        placemarkMapObject.opacity = 0.5f
-//        placemarkMapObject.addTapListener(mapObjectTapListener)
-//    }
 
     private fun setApiKey(savedInstanceState: Bundle?) {
         val haveApiKey = savedInstanceState?.getBoolean("haveApiKey") ?: false

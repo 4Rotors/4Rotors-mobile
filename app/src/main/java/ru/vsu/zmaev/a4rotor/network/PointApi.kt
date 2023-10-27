@@ -1,15 +1,16 @@
-package ru.vsu.zmaev.a4rotor.data.network
+package ru.vsu.zmaev.a4rotor.network
 
 import retrofit2.Response
 import retrofit2.http.Body
-import retrofit2.http.GET
 import retrofit2.http.Headers
-import ru.vsu.zmaev.a4rotor.data.model.point.PointData
+import retrofit2.http.POST
+import ru.vsu.zmaev.a4rotor.model.PointData
+import ru.vsu.zmaev.a4rotor.model.PointRequestBody
 
 interface PointApi {
 
-    @Headers("Content type: application/json")
-    @GET("getLocation")
+    @Headers("Content-type: application/json")
+    @POST("/order_in_delivery/location")
     suspend fun getPoint(@Body pointRequestBody: PointRequestBody) : Response<PointData>
 
     companion object {

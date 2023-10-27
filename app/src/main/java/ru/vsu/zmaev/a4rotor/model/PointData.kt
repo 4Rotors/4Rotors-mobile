@@ -1,4 +1,4 @@
-package ru.vsu.zmaev.a4rotor.data.model.point
+package ru.vsu.zmaev.a4rotor.model
 
 data class PointData (
     val locationX: Double,
